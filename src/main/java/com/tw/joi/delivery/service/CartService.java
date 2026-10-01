@@ -21,6 +21,8 @@ public class CartService {
     private final Map<String, Cart> userCarts = SeedData.cartForUsers;
     private final UserService userService;
     private final ProductService productService;
+    private final ProductPricing productPricing;
+    private final StockReservation stockReservation;
 
     public CartProductInfo addProductToCartForUser(AddProductRequest addProductRequest) throws BadRequestException {
         User user = userService.fetchUserById(addProductRequest.getUserId());
@@ -45,13 +47,15 @@ public class CartService {
         }
 
         product.setAvailableStock(product.getAvailableStock() - 1);
+        BigDecimal sellingPrice = productPricing.calculateSellingPrice(product);
+        if (!stockReservation.reserveOneUnit(product)) {
+            throw new BadRequestException("Product is out of stock");
+        }
+        product.setSellingPrice(sellingPrice);
 
         if (cart.getOutlet() == null) {
             cart.setOutlet(product.getStore());
         }
-
-        BigDecimal sellingPrice = product.calculateSellingPrice();
-
 
         cart.getProducts()
                 .add(product);
